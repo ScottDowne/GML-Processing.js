@@ -1,21 +1,71 @@
 <html>
-    <head>
-        <script src="http://code.jquery.com/jquery.js"></script>
+   <body>
+        <canvas id="gml" data-000000book-sources="138"></canvas>
+        <script src="processing.js"></script>
+        <br /><br />
+        000000book data: <input id="bk" type="text" value="161" onchange="gmlPlayer();"/><br /> 155 and 161 are good ones.
         <script>
+            function getScript(url, success) {
+                var script = document.createElement('script');
+                script.src = url;
+                var head = document.getElementsByTagName('head')[0],
+                    done = false;
+                script.onload = script.onreadystatechange = function () {
+                    if (!done && (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete')) {
+                        done = true;
+                        success();
+                    }
+                };
+                head.appendChild(script);
+            }
+            var ajax = function ajax(url) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", url, false);
+                xhr.setRequestHeader("If-Modified-Since", "Fri, 1 Jan 1960 00:00:00 GMT");
+                xhr.send(null);
+                // failed request?
+                if (xhr.status !== 200 && xhr.status !== 0) { throw ("XMLHttpRequest failed, status code " + xhr.status); }
+                return xhr.responseText;
+            };
+       
             var strokes=0;
             var gml=0;
-            $(function() {
-                var i = window.location.hash.substring(1);
-                if (!i) return alert('you must specify an id, try /index.html#161');
+            var canvas = document.getElementById("gml");
+            
+            function getJquery(success, next) {
+            	  if(typeof jQuery === 'undefined') {
+	                  getScript('http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js',function() {
+	                      success(next);
+	                  });
+                } else {
+                    success(next);
+                }
+            }
+            
+            function getProcessing(success) {
+            	  if(typeof Processing === 'undefined') {
+	                  getScript('http://processingjs.org/content/download/processing-js-0.9.7/processing-0.9.7.min.js',function() {
+	                      success();
+	                  });
+                } else {
+                    success();
+                }
+            }
+            
+            function gmlPlayer() {
+                var i = document.getElementById("bk").value; //canvas.getAttribute("data-000000book-sources");
                 $.getJSON('http://000000book.com/data/' + i + '.json?callback=?', function(data) {
-                   gml = data;
-                   strokes = data.gml.tag.drawing.stroke;
-                });          
-            });
+                    gml = data;
+                    strokes = data.gml.tag.drawing.stroke;
+                    if (Processing.getInstanceById("gml")) {
+                      Processing.getInstanceById("gml").exit();
+                    }
+                    Processing.addInstance(new Processing(canvas, ajax("gml.js")));
+                });
+            }
+            
+            getJquery(getProcessing, gmlPlayer);
+            
         </script>
-        <script src="processing.js"></script>
-   </html>
-   <body>
-        <canvas id="can" data-processing-sources="gml.js"></canvas>
    </body>
 </html>
