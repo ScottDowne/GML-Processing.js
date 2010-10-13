@@ -3,8 +3,7 @@ var onPt = 0; // current point on stroke
 var onStroke = 0; // current point on stroke
 var start = +(new Date());
 var x, y, rotation = false; //pjs dies on comma seperation
-var lastHyp;
-var ol; // oldLine - redraws last line to remove border overflow
+//var ol; // oldLine - redraws last line to remove border overflow
 
 var playButton = {
   playing: true,
@@ -14,11 +13,9 @@ var playButton = {
   height : 60,
   mouseOver : false,
   play : function() {
-    if(this.playing) {
-      noLoop();
+    if(this.playing === true) {
       this.playing = false;
     } else {
-      loop();
       this.playing = true;
     }
   },
@@ -50,6 +47,7 @@ var seekBar = {
   y : 500,
   width : 665,
   height : 60,
+  seeking : false,
   mouseOver : function() {
       if (mouseX >= this.x && mouseX < this.x + this.width && mouseY >= this.y && mouseY < this.y + this.height) {
           return true;
@@ -60,7 +58,7 @@ var seekBar = {
   update : function() {
       strokeWeight(0);
       fill(191.25);
-      rect(this.x + this.height/3, this.y + this.height/3, (onPt/strokes.pt.length*100)/100*625, this.height - this.height/3*2);
+      rect(this.x + this.height/3, this.y + this.height/3, (onPt/strokes.pt.length)*625, this.height - this.height/3*2);
   },
   draw : function() {
       strokeWeight(0);
@@ -89,25 +87,26 @@ setup = function() {
 };
 
 draw = function() {
-    var start; var hyp;
-    if (!strokes) return;
-    _stroke = strokes.length ? strokes[onStroke] : strokes;
-    pt = _stroke.pt[onPt];
-    if ((+(new Date())-start)/1000>pt.time) {
-        var p = onPt;
-        if (x !== null) drawLine(x,y,pt.x,pt.y);
-        if (onPt) {
-            if (++onPt >= _stroke.pt.length) {
-                if (!strokes.length || ++onStroke >= strokes.length) return reset();
-                onPt = 0;
+    if (playButton.playing && seekBar.seeking === false) {
+        var start; var hyp;
+        if (!strokes) return;
+        _stroke = strokes.length ? strokes[onStroke] : strokes;
+        pt = _stroke.pt[onPt];
+        if ((+(new Date())-start)/1000>pt.time) {
+            var p = onPt;
+            if (x !== null) drawLine(x,y,pt.x,pt.y);
+            if (onPt) {
+                if (++onPt >= _stroke.pt.length) {
+                    if (!strokes.length || ++onStroke >= strokes.length) return reset();
+                    onPt = 0;
+                }
             }
+            x = pt.x;
+            y = pt.y;
+            if (onPt==p) onPt++; //went back to 0
         }
-        x = pt.x;
-        y = pt.y;
-        if (onPt==p) onPt++; //went back to 0
+        seekBar.update();
     }
-    seekBar.draw();
-    seekBar.update();
     playButton.draw();
 };
 
@@ -130,6 +129,7 @@ function drawLine(x,y,x2,y2) {
 function reset() {
     background(0);
     playButton.draw();
+    seekBar.update();
     seekBar.draw();
     onPt = onStroke = 0;
     x = y = null;
@@ -137,14 +137,12 @@ function reset() {
 
 function seek(point) {
     reset();
-    
-    
+
     var start; var hyp;
     while (onPt <= point) {
         if (!strokes) return;
         _stroke = strokes.length ? strokes[onStroke] : strokes;
         pt = _stroke.pt[onPt];
-        //if ((+(new Date())-start)/1000>pt.time) {
         var p = onPt;
         if (x !== null) drawLine(x,y,pt.x,pt.y);
         if (onPt) {
@@ -157,47 +155,30 @@ function seek(point) {
         y = pt.y;
         if (onPt==p) onPt++; //went back to 0
     }
+    seekBar.update();
     
 }
 
 void mouseClicked() {
     if (playButton.mouseOver) {
         playButton.play();
-        playButton.draw();
     }
 }
 
-//var pressing = false;
 var seekInterval;
 void mousePressed() {
-    //pressing = true;
-    if (playButton.playing) {
-      noLoop();
-    }
     if (seekBar.mouseOver()) {
-        seek(((mouseX - (20 + 75 + 20 + 20))/625*100)/100*strokes.pt.length);
-        seekBar.draw();
-        seekBar.update();
+        seekBar.seeking = true;
+        seekInterval = setInterval(function() {
+            seek(((mouseX - 135)/625)*strokes.pt.length);
+        }, 100);
     }
     
-    seekInterval = setInterval(function() {
-        if (seekBar.mouseOver()) {
-            seek(((mouseX - (20 + 75 + 20 + 20))/625*100)/100*strokes.pt.length);
-            seekBar.draw();
-            seekBar.update();
-        }
-    }, 10);
 }
 
 void mouseReleased() {
-    //pressing = false;
-    if (playButton.playing) {
-      loop();
+    if (seekBar.seeking === true) {
+        seekBar.seeking = false;
+        clearInterval(seekInterval);
     }
-    clearInterval(seekInterval);
-}
-
-void mouseMoved() {
-
-    playButton.draw();
 }
